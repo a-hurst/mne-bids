@@ -273,3 +273,4 @@ People who contributed to this release (in alphabetical order):
 .. _Alexandre Gramfort: http://alexandre.gramfort.net
 .. _Ariel Rokem: https://github.com/arokem
 .. _Evgenii Kalenkovich: https://github.com/kalenkovich
+.. _Austin Hurst: https://github.com/a-hurst
