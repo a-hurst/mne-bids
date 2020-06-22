@@ -56,7 +56,7 @@ def test_raw_to_bids(tmpdir):
     edf_fname = op.join(edf_data_path, 'test.edf')
     with ArgvSetter(('--subject_id', subject_id, '--task', task, '--raw',
                      edf_fname, '--bids_root', output_path)):
-        mne_bids_raw_to_bids.run()   
+        mne_bids_raw_to_bids.run()
 
     # Too few input args
     with pytest.raises(SystemExit):
