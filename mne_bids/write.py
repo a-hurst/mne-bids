@@ -429,8 +429,8 @@ def _mri_landmarks_to_mri_voxels(mri_landmarks, t1_mgh):
     return mri_landmarks
 
 
-def _sidecar_json(raw, task, manufacturer, fname, kind, overwrite=False,
-                  verbose=True):
+def _sidecar_json(raw, task, manufacturer, fname, kind, template=None,
+                  overwrite=False, verbose=True):
     """Create a sidecar json file depending on the kind and save it.
 
     The sidecar json file provides meta data about the data of a certain kind.
@@ -541,6 +541,34 @@ def _sidecar_json(raw, task, manufacturer, fname, kind, overwrite=False,
     ch_info_json += append_kind_json
     ch_info_json += ch_info_ch_counts
     ch_info_json = OrderedDict(ch_info_json)
+
+    # If a template given, use it to fill in sidecar values
+    if template:
+
+        # Read in sidecar template and get default & template fields
+        with open(template, "r") as tmp_f:
+            sidecar_tmp = json.load(tmp_f, object_pairs_hook=OrderedDict)
+        default_fields = set(ch_info_json.keys())
+        template_fields = set(sidecar_tmp.keys())
+
+        # Use field order in template to sort default keys, if values are None
+        not_in_template = default_fields.difference(template_fields)
+        only_in_template = template_fields.difference(default_fields)
+        in_both = template_fields.intersection(default_fields)
+        for field in only_in_template:
+            if sidecar_tmp[field] == None:
+                sidecar_tmp.pop(field)
+        field_order = list(not_in_template) + list(sidecar_tmp.keys())
+        for field in in_both:
+            if sidecar_tmp[field] == None:
+                sidecar_tmp.pop(field)
+
+        # Update values in generate sidecar with non-None values in template
+        ch_info_json.update(sidecar_tmp)
+
+        # Sort updated sidecar according to sort order in template
+        sorted_info = [(field, ch_info_json[field]) for field in field_order]
+        ch_info_json = OrderedDict(sorted_info)
 
     _write_json(fname, ch_info_json, overwrite, verbose)
 
@@ -822,7 +850,7 @@ def make_dataset_description(path, name, data_license=None,
 
 
 def write_raw_bids(raw, bids_basename, bids_root, events_data=None,
-                   event_id=None, anonymize=None,
+                   event_id=None, anonymize=None, sidecar_template=None,
                    overwrite=False, verbose=True):
     """Save raw data to a BIDS-compliant folder structure.
 
@@ -943,6 +971,9 @@ def write_raw_bids(raw, bids_basename, bids_root, events_data=None,
 
     if raw.preload is not False:
         raise ValueError('The data should not be preloaded.')
+
+    if sidecar_template and not op.exists(sidecar_template):
+        raise ValueError('The specified sidecar JSON template does not exist.')
 
     bids_root = _path_to_str(bids_root)
     raw = raw.copy()
@@ -1117,7 +1148,7 @@ def write_raw_bids(raw, bids_basename, bids_root, events_data=None,
         make_dataset_description(bids_root, name=" ", verbose=verbose)
 
     _sidecar_json(raw, task, manufacturer, sidecar_fname, kind, overwrite,
-                  verbose)
+                  verbose, sidecar_template)
     _channels_tsv(raw, channels_fname, overwrite, verbose)
 
     # set the raw file name to now be the absolute path to ensure the files
